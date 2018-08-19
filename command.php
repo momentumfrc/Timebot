@@ -27,7 +27,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
     $responded = false;
     if(file_exists("./lastTime.txt")){
       $lastDate = file_get_contents("./lastTime.txt");
-      if($currentDate - $lastDate > 604800) {
+      if($currentDate - $lastDate > 2629746000) {
         $response = array("response_type" => "in_channel","text" => "It's ".date("h:i")."\n\n_It's been a long, long time. How have you been?.._");
         echo(json_encode($response));
         $responded = true;
@@ -37,24 +37,17 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
     if($responded) {
       exit();
     }
-    $rand = rand(0,7);
-    if($rand == 0) {
-      $info = querySlack('https://slack.com/api/users.info', array('token'=>$oauth,'user'=>$_POST['user_id']));
-      $response = array('response_type'=>'in_channel', 'text'=>'I\'m sorry '.$info['user']['profile']['first_name'].', I\'m afraid I can\'t do that');
-      echo(json_encode($response));
-    } elseif ($rand == 1) {
-      $response = array("response_type" => "in_channel","text" => "It's ".date("h:i")."\n\n_Still alive..._");
-      echo(json_encode($response));
-    } elseif ($rand == 2) {
-      $response = array("response_type" => "in_channel","text" => "It's ".date("h:i")."\n\n_I'm special..._");
-      echo(json_encode($response));
-    } elseif ($rand == 3) {
-      $response = array("response_type" => "in_channel","text" => "It's ".date("h:i")."\n\n_Daisy Daisy..._");
-      echo(json_encode($response));
-    } else {
-      $response = array("response_type" => "in_channel","text" => "It's ".date("h:i"));
-      echo(json_encode($response));
+    $rand = rand(0,5);
+    $time = date("g:i");
+    $response = array("response_type"=> "in_channel", "text" => "It's ".$time);
+    switch($time) {
+        case "4:20":
+            if($rand == 0) {
+                $response["text"] .= "\nayyyy";
+            }
+            break;
     }
+    echo(json_encode($response));
   }
 }
 ?>
