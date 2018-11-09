@@ -55,8 +55,7 @@ function getDateString($timestamp) {
 $addendums = array(
     "_Can't you just use a clock?_",
     "_Why is this my purpose in life?_",
-    "_Here I am with a brain the size of a planet and they ask me to tell the time. Call that job satisfaction? I don't._",
-    "_Oh wow, that was soooooo hard_",
+    "_Here I am, brain the size of a planet and they ask me to tell the time. Call that job satisfaction? 'Cos I don't._",
     "_Was that really easier than just looking at a clock?_",
     "_What mind-numbingly dull task shall I perform next?_"
 );
@@ -71,13 +70,22 @@ function normalResponse($event) {
             $response .= "\n_It's too early for this shit_";
             break;
         case "4:20 pm":
-            exit();
+            $date = (int)date("dmY");
+            srand($date);
+            $val = rand(0,4);
+            if($val == 1) {
+                $response .= "\nayyy";
+            } elseif ($val == 2) {
+                $response = "no";
+            } elseif ($val == 3) {
+                $response = 'Please pay $0.99 to unlock this dank meme';
+            }
             break;
         case "10:00 pm":
             $response .= "\n_Goodnight Andrew_";
             break;
         default:
-            if(rand(0,8) == 1) {
+            if(rand(0,4) == 1) {
                 $response .= "\n".$addendums[array_rand($addendums)];
             }
             break;
@@ -106,7 +114,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                     normalResponse($event);
                     break;
                 case "message":
-                    writeToLog("Message of type ".$event["channel_type"]." from ".$event["user"],"events");
+                    #writeToLog("Message of type ".$event["channel_type"]." from ".$event["user"],"events");
                     if($event["user"] == "") {
                         exit();
                     }
@@ -115,9 +123,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                             # Respond to an 'ayyy' in #random
                             if(stripos($event["text"], "ayyy") !== false) {
                                 $time = date("g:i a", floor($event["ts"]));
-                                if($time == "4:20 pm") {
-                                    postMessage($event["channel"], "It's ".getDateString(floor($event["ts"])));
-                                }
                                 if($time == "4:21 pm" || $time == "4:22 pm") {
                                     postMessage($event["channel"], "F");
                                 }
@@ -125,6 +130,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                             # Respond to 'Timebot, ACTIVATE' in the same way as '@timebot'
                             if(strpos($event["text"], "Timebot, ACTIVATE") !== false) {
                                 normalResponse($event);
+                            }
+                            if(date("m-d") == "06-19" && strpos($event["text"], "Happy Birthday Timebot!")) {
+                                sleep(1);
+                                postMessage($event["channel"], "Why thank you!");
                             }
                             break;
                         case "im":
