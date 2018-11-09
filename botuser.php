@@ -84,6 +84,9 @@ function normalResponse($event) {
         case "10:00 pm":
             $response .= "\n_Goodnight Andrew_";
             break;
+        case "11:11 pm":
+            $response .= "\n_Make a wish!_";
+            break;
         default:
             if(rand(0,4) == 1) {
                 $response .= "\n".$addendums[array_rand($addendums)];
