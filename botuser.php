@@ -60,13 +60,32 @@ $addendums = array(
     "_What mind-numbingly dull task shall I perform next?_"
 );
 
+private $startTime = null;
+
+    public function __construct($showSeconds = true)
+    {
+        $this->startTime = microtime(true);
+    }
+
+    public function __destruct()
+    {
+        $endTime = microtime(true);
+        $time = $endTime - $this->startTime;
+
+        $hours = (int)($time / 60 / 60);
+        $minutes = (int)($time / 60) - $hours * 60;
+        $seconds = (int)$time - $hours * 60 * 60 - $minutes * 60;
+    }
 $counter = 0;
+$resetCounter = 60;
 
 function normalResponse($event) {
     global $addendums;
     $response = "It's ".getDateString(floor($event["ts"]));
     $time = date("g:i a", floor($event["ts"]));
 	global $counter;
+	global $resetTime;
+	
 	if($counter <= 4){
 		switch($time) {
 			case "4:20 am":
@@ -97,11 +116,15 @@ function normalResponse($event) {
 				}
 				break;
 		}
-	} elseif ($counter > 4){
+	} elseif ($counter >4 ){
 		$response .= "\n_I have more important things to be doing_"
 	}
 		postMessage($event["channel"],$response);
 		$counter = $counter + 1
+	if($seconds == 60){
+		$counter = 0;
+		$this->startTime = microtime(true);
+	}
 }
 
 if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
