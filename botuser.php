@@ -60,40 +60,48 @@ $addendums = array(
     "_What mind-numbingly dull task shall I perform next?_"
 );
 
+$counter = 0;
+
 function normalResponse($event) {
     global $addendums;
     $response = "It's ".getDateString(floor($event["ts"]));
     $time = date("g:i a", floor($event["ts"]));
-    switch($time) {
-        case "4:20 am":
-            $response .= "\nayyyy";
-            $response .= "\n_It's too early for this shit_";
-            break;
-        case "4:20 pm":
-            $date = (int)date("dmY");
-            srand($date);
-            $val = rand(0,4);
-            if($val == 1) {
-                $response .= "\nayyy";
-            } elseif ($val == 2) {
-                $response = "no";
-            } elseif ($val == 3) {
-                $response = 'Please pay $0.99 to unlock this dank meme';
-            }
-            break;
-        case "10:00 pm":
-            $response .= "\n_Goodnight Andrew_";
-            break;
-        case "11:11 pm":
-            $response .= "\n_Make a wish!_";
-            break;
-        default:
-            if(rand(0,4) == 1) {
-                $response .= "\n".$addendums[array_rand($addendums)];
-            }
-            break;
-    }
-    postMessage($event["channel"],$response);
+	global $counter;
+	if($counter <= 4){
+		switch($time) {
+			case "4:20 am":
+				$response .= "\nayyyy";
+				$response .= "\n_It's too early for this shit_";
+				break;
+			case "4:20 pm":
+				$date = (int)date("dmY");
+				srand($date);
+				$val = rand(0,4);
+				if($val == 1) {
+					$response .= "\nayyy";
+				} elseif ($val == 2) {
+					$response = "no";
+				} elseif ($val == 3) {
+					$response = 'Please pay $0.99 to unlock this dank meme';
+				}
+				break;
+			case "10:00 pm":
+				$response .= "\n_Goodnight Andrew_";
+				break;
+			case "11:11 pm":
+				$response .= "\n_Make a wish!_";
+				break;
+			default:
+				if(rand(0,4) == 1) {
+					$response .= "\n".$addendums[array_rand($addendums)];
+				}
+				break;
+		}
+	} elseif ($counter > 4){
+		$response .= "\n_I have more important things to be doing_"
+	}
+		postMessage($event["channel"],$response);
+		$counter = $counter + 1
 }
 
 if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
