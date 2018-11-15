@@ -89,7 +89,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                         }
                         $timebucks = $userinfo["balance"] - $cost;
                         if($timebucks < 0) {
-                            $message = "I'm sorry <@".$userinfo["id"].">, but you have insufficient TimeBucks!\n This action costs $".number_format($cost,2)."\nYour current balance is $".number_format($userinfo["balance"],2);
+                            $message = "I'm sorry <@".$userinfo["id"].">, but you have insufficient TimeBucks!\nThis action costs $".number_format($cost,2)."\nYour current balance is $".number_format($userinfo["balance"],2);
                             postMessage($event["channel"],$message);
                         } else {
                             updateUserBalance($DB,$userinfo["id"],$timebucks);
@@ -110,34 +110,34 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                             $matches = array();
         
                             $valid_time = false;
-        
-                            if(preg_match("/it\'?s 0?((1?[1-9]|2[0-4])\:[0-5][0-9])(\s|\$)/",$text,$matches)) {
-                                # 24 hour time
-                                $supposed_time = $matches[1];
-                                $current_time = date("G:i", floor($event["ts"]));
-                                $valid_time = $supposed_time == $current_time;
-                            } elseif(preg_match("/it\'?s 0?(([1-9]|1[0-2])\:[0-5][0-9])\s?(am|pm)/",$text,$matches)) {
+                            
+                            writeToLog("Matching \"".$text."\" ?".(preg_match("/it\'?s 0?(([1-9]|1[0-2])\:[0-5][0-9]) ?(am|pm)/",$text)?"true":"false"),"events");
+
+                            if(preg_match("/it(\'|’)?s 0?(([1-9]|1[0-2])\:[0-5][0-9]) ?(am|pm)/",$text,$matches)) {
                                 # 12 hour time
-                                $supposed_time = $matches[1].$matches[3];
-                                $current_time = date("g:ia");
+                                $supposed_time = $matches[2].$matches[4];
+                                $current_time = date("g:ia", floor($event["ts"]));
+                                $valid_time = $supposed_time == $current_time;
+                            } elseif(preg_match("/it(\'|’)?s 0?((1?[1-9]|2[0-4])\:[0-5][0-9])/",$text,$matches)) {
+                                # 24 hour time
+                                $supposed_time = $matches[2];
+                                $current_time = date("G:i", floor($event["ts"]));
                                 $valid_time = $supposed_time == $current_time;
                             }
         
                             if($valid_time) {
-                                $last_time = file_get_contents("lasttime.txt");
-                                file_put_contents("lasttime.txt",time());
-                                if(time() - $last_time > $TIMEBUCKS_RATE_LIMIT) {
-                                    $DB = createDBObject();
-                                    checkUserInDB($DB, $event["user"]);
-                                    $userinfo = getUserInfo($DB,$event["user"]);
+                                $DB = createDBObject();
+                                checkUserInDB($DB, $event["user"]);
+                                $userinfo = getUserInfo($DB,$event["user"]);
+                                if(floor($event["ts"]) - $userinfo["cooldown"] > $TIMEBUCKS_RATE_LIMIT) {
                                     $timebucks = $userinfo["balance"] + $TIMEBUCKS_INCREMENT;
                                     updateUserBalance($DB, $userinfo["id"],$timebucks);
                                     $message = "Your TimeBucks balance is now $".number_format($timebucks,2);
                                     postEphemeral($event["channel"],$userinfo["id"],$message);
                                 } else {
-                                    postMessage($event["channel"],"TimeBucks can only be earned once every ".number_format($TIMEBUCKS_RATE_LIMIT/3600,2)." hours.\nThe next TimeBuck unlocks at ".date("g:i a",time()+$TIMEBUCKS_RATE_LIMIT));
+                                    postEphemeral($event["channel"],$userinfo["id"],"TimeBucks can only be earned once every ".($TIMEBUCKS_RATE_LIMIT/3600)." hours.\nYour next TimeBuck unlocks at ".date("g:i a",floor($event["ts"])+$TIMEBUCKS_RATE_LIMIT));
                                 }
-                                
+                                resetUserCooldown($DB, $userinfo["id"], floor($event["ts"]));
                             }
                             
                             # Respond to an 'ayyy' in #random

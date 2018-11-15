@@ -9,6 +9,6 @@ $database = "";
 $table = ""
 
 /*
-Table schema: (`id` VARCHAR(255) PRIMARY KEY, `balance` FLOAT NOT NULL DEFAULT 0)
+Table schema: (`id` VARCHAR(255) PRIMARY KEY, `balance` FLOAT NOT NULL DEFAULT 0, `cooldown` INT NOT NULL DEFAULT 0)
 */
 ?>

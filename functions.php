@@ -177,10 +177,10 @@ function getUserInfo($DB, $user) {
     }
     $stmt->bind_param("s",$user);
     $stmt->execute();
-    $stmt->bind_result($id, $balance);
+    $stmt->bind_result($id, $balance, $cooldown);
     $stmt->fetch();
     $stmt->close();
-    return array("id"=>$id,"balance"=>$balance);
+    return array("id"=>$id,"balance"=>$balance,"cooldown"=>$cooldown);
 }
 /**
  * Set the user's timebucks balance
@@ -195,6 +195,23 @@ function updateUserBalance($DB, $user, $newbalance) {
         throw new Exception($DB->error);
     }
     $stmt->bind_param("ds",$newbalance,$user);
+    $stmt->execute();
+    $stmt->close();
+}
+/**
+ * Reset the user's cooldown period
+ * @param mysqli $DB The database connection
+ * @param string $user The userid for the user whose timebucks balance is to be updated
+ * @param int $newts The new timestamp to reset the cooldown to
+ */
+function resetUserCooldown($DB, $user, $newts) {
+    global $table;
+    $stmt = $DB->prepare("UPDATE ".$table." SET `cooldown`=? WHERE `id`=?");
+    if($stmt === FALSE) {
+        throw new Exception($DB->error);
+    }
+    $time = time();
+    $stmt->bind_param("ds",$time,$user);
     $stmt->execute();
     $stmt->close();
 }
