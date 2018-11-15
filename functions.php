@@ -104,6 +104,18 @@ function postEphemeral($channel, $user, $text) {
     }
 }
 /**
+ * Post an ephemeral json-encoded message to slack
+ * @param string $message The message text to send
+ */
+function postEphemeralJSON($message) {
+    global $bot_token;
+    $result = json_decode(json_post_query_slack("https://slack.com/api/chat.postEphemeral",$bot_token,$message),true);
+    if(!isset($result["ok"]) || !$result["ok"]) {
+        writeToLog("Error posting json message".json_encode($message),"slack");
+        throw new Exception($result["error"]);
+    }
+}
+/**
  * Prevent slack from thinking the server timed out
  */
 function stopTimeout() {

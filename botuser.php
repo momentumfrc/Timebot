@@ -3,10 +3,9 @@ include 'functions.php';
 
 $TIMEBUCKS_RATE_LIMIT = 3600;
 $TIMEBUCKS_INCREMENT = 1;
-$TIME_COST = 1;
-$MEME_COST = 2;
 
 if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
+    writeToLog(file_get_contents("php://input"),"raw");
     $headers = getallheaders();
     if(isset($headers["X-Slack-Retry-Reason"])) {
         writeToLog("Slack retry because ".$headers["X-Slack-Retry-Reason"],"events");
@@ -19,7 +18,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
             echo(json_encode(array("challenge"=>$data["challenge"])));
             break;
         case "event_callback":
-            #stopTimeout();
+            stopTimeout();
             $event = $data["event"];
             switch($event["type"]) {
                 case "app_mention":
@@ -64,38 +63,60 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                         }
                         postMessage($event["channel"],$message);
                     } else {
-                        $DB = createDBObject();
-                        checkUserInDB($DB, $event["user"]);
-                        $userinfo = getUserInfo($DB,$event["user"]);
+                        $actions = json_decode(file_get_contents("actions.json"), true);
 
-                        $response = "It's ".getDateString(floor($event["ts"]));
-                        $time = date("g:i a", floor($event["ts"]));
+                        $message = array(
+                            "channel"=>$event["channel"],
+                            "user"=>$event["user"],
+                            "text"=>"What message would you like to send?",
+                            "attachments"=>array(
+                                array(
+                                    "text"=>"Choose a message",
+                                    "fallback"=>"Your device does not support choosing a message",
+                                    "callback_id"=>"tb_message",
+                                    "actions"=>array()
+                                )
+                            )
+                        );
 
-                        $cost = $TIME_COST;
-                        switch($time) {
-                            case "4:20 am":
-                                $cost = $MEME_COST;
-                                $response .= "\nayyyy";
-                                $response .= "\n_It's too early for this shit_";
-                                break;
-                            case "4:20 pm":
-                                $cost = $MEME_COST;
-                                $response .= "\nayyy";
-                                break;
-                            case "10:00 pm":
-                                $cost = $MEME_COST;
-                                $response .= "\n_Goodnight Andrew_";
-                                break;
+                        foreach($actions as $action) {
+                            $add = false;
+                            if($action["time"] == "any") {
+                                $add = true;
+                            } elseif(strpos($action["time"],"-") !== FALSE) {
+                                $times = explode("-",$action["time"]);
+                                $start = DateTime::createFromFormat("g:ia",$times[0]);
+                                $end = DateTime::createFromFormat("g:ia",$times[1]);
+                                $now = DateTime::createFromFormat("U",floor($event["ts"]));
+                                if($start < $now && $now < $end) {
+                                    $add = true;
+                                }
+                            } else {
+                                $now = date("g:ia", floor($event["ts"]));
+                                if($now == $action["time"]) {
+                                    $add = true;
+                                }
+                            }
+                            writeToLog("Add ".$action["name"]."? ".($add?"sure":"nope"),"events");
+                            if($add) {
+                                $message["attachments"][0]["actions"][] = array(
+                                    "name"=>"tb_option",
+                                    "text"=>$action["display"],
+                                    "type"=>"button",
+                                    "value"=>$action["name"],
+                                    "confirm"=>array(
+                                        "title"=>"Are you sure?",
+                                        "text"=>"This action will use $".number_format($action["cost"],2),
+                                        "ok_text"=>"Yes",
+                                        "dismiss_text"=>"No"
+                                    )
+                                );
+                            }
+                            
                         }
-                        $timebucks = $userinfo["balance"] - $cost;
-                        if($timebucks < 0) {
-                            $message = "I'm sorry <@".$userinfo["id"].">, but you have insufficient TimeBucks!\nThis action costs $".number_format($cost,2)."\nYour current balance is $".number_format($userinfo["balance"],2);
-                            postMessage($event["channel"],$message);
-                        } else {
-                            updateUserBalance($DB,$userinfo["id"],$timebucks);
-                            postMessage($event["channel"],$response);
-                        }
+                        postEphemeralJSON(json_encode($message));
                     }
+                    writeToLog("break","events");
                     break;
                 case "message";
                     # Prevent timebot from responding to itself
@@ -162,12 +183,15 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                             break;
                     }
                     break;
+                default:
+                    break;
             }
             break;
         default:
             break;
     }
 } else {
+    writeToLog("Recieved improper request","events");
     echo("You're not supposed to be here");
 }
 ?>

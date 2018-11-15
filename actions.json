@@ -1,0 +1,23 @@
+[
+    {
+        "name":"default",
+        "cost": 1,
+        "time":"any",
+        "display":"Normal response",
+        "value":"It's %timestring%"
+    },
+    {
+        "name":"ayyy",
+        "cost": 2,
+        "time":"4:20pm",
+        "display":"Ayyy",
+        "value":"It's %timestring%\nayyy"
+    },
+    {
+        "name":"goodnight",
+        "cost": 2,
+        "time":"9:00pm-11:00pm",
+        "display":"Goodnight",
+        "value":"It's %timestring%\n_Goodnight Andrew_"
+    }
+]
