@@ -5,7 +5,6 @@ $TIMEBUCKS_RATE_LIMIT = 3600;
 $TIMEBUCKS_INCREMENT = 1;
 
 if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
-    writeToLog(file_get_contents("php://input"),"raw");
     $headers = getallheaders();
     if(isset($headers["X-Slack-Retry-Reason"])) {
         writeToLog("Slack retry because ".$headers["X-Slack-Retry-Reason"],"events");
@@ -97,7 +96,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                                     $add = true;
                                 }
                             }
-                            writeToLog("Add ".$action["name"]."? ".($add?"sure":"nope"),"events");
                             if($add) {
                                 $message["attachments"][0]["actions"][] = array(
                                     "name"=>"tb_option",
@@ -116,7 +114,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                         }
                         postEphemeralJSON(json_encode($message));
                     }
-                    writeToLog("break","events");
                     break;
                 case "message";
                     # Prevent timebot from responding to itself

@@ -2,7 +2,6 @@
 include 'functions.php';
 
 if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
-    writeToLog($_POST["payload"],"raw");
     $headers = getallheaders();
     if(isset($headers["X-Slack-Retry-Reason"])) {
         writeToLog("Slack retry because ".$headers["X-Slack-Retry-Reason"],"response");
@@ -10,7 +9,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
     $data = json_decode($_POST["payload"], true);
 
     if($data["type"] == "interactive_message") {
-        writeToLog("Recieved message callback: ".json_encode($data), "response");
 
         $actions = json_decode(file_get_contents("actions.json"), true);
 
