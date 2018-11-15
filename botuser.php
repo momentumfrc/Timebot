@@ -1,6 +1,7 @@
 <?php
 include 'functions.php';
 
+$TIMEBUCKS_RATE_LIMIT = 3600;
 $TIMEBUCKS_INCREMENT = 1;
 $TIME_COST = 1;
 $MEME_COST = 2;
@@ -123,13 +124,20 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                             }
         
                             if($valid_time) {
-                                $DB = createDBObject();
-                                checkUserInDB($DB, $event["user"]);
-                                $userinfo = getUserInfo($DB,$event["user"]);
-                                $timebucks = $userinfo["balance"] + $TIMEBUCKS_INCREMENT;
-                                updateUserBalance($DB, $userinfo["id"],$timebucks);
-                                $message = "Your TimeBucks balance is now $".number_format($timebucks,2);
-                                postEphemeral($event["channel"],$userinfo["id"],$message);
+                                $last_time = file_get_contents("lasttime.txt");
+                                file_put_contents("lasttime.txt",time());
+                                if(time() - $last_time > $TIMEBUCKS_RATE_LIMIT) {
+                                    $DB = createDBObject();
+                                    checkUserInDB($DB, $event["user"]);
+                                    $userinfo = getUserInfo($DB,$event["user"]);
+                                    $timebucks = $userinfo["balance"] + $TIMEBUCKS_INCREMENT;
+                                    updateUserBalance($DB, $userinfo["id"],$timebucks);
+                                    $message = "Your TimeBucks balance is now $".number_format($timebucks,2);
+                                    postEphemeral($event["channel"],$userinfo["id"],$message);
+                                } else {
+                                    postMessage($event["channel"],"TimeBucks can only be earned once every ".number_format($TIMEBUCKS_RATE_LIMIT/3600,2)." hours.\nThe next TimeBuck unlocks at ".date("g:i a",time()+$TIMEBUCKS_RATE_LIMIT));
+                                }
+                                
                             }
                             
                             # Respond to an 'ayyy' in #random
