@@ -28,6 +28,28 @@ function post_query_slack($url,$opts) {
     return $data;
 }
 /**
+ * Preform a POST request on a specified url with the json-encoded data
+ * @param string $url The url to query
+ * @param string $token The authorization token
+ * @param string $encoded_data The json-encoded data
+ * @return string The server's response
+ */
+function json_post_query_slack($url,$token,$encoded_data) {
+    $curl = curl_init();
+    curl_setopt($curl, CURLOPT_URL, $url);
+    curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "POST");
+    curl_setopt($curl, CURLOPT_POSTFIELDS, $encoded_data);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($curl, CURLOPT_HTTPHEADER, array(
+        'Content-Type: application/json',
+        'Authorization: Bearer '.$token,
+        'Content-Length: '.strlen($encoded_data)
+    ));
+    $data = curl_exec($curl);
+    curl_close($curl);
+    return $data;
+}
+/**
 * Preform a GET request on a specified url with the specified parameters
 * @param string $url The url to query
 * @param array $opts The url parameters
@@ -48,17 +70,38 @@ function get_query_slack($url,$opts) {
  */
 function postMessage($channel, $message) {
     global $bot_token;
-    post_query_slack("https://slack.com/api/chat.postMessage",array("token"=>$bot_token,"channel"=>$channel,"text"=>$message));
+    $result = json_decode(post_query_slack("https://slack.com/api/chat.postMessage",array("token"=>$bot_token,"channel"=>$channel,"text"=>$message)),true);
+    if(!isset($result["ok"]) || !$result["ok"]) {
+        writeToLog("Error posting message".json_encode($message),"slack");
+        throw new Exception($result["error"]);
+    }
+}
+/**
+ * Post a json-encoded message to slack
+ * @param string $message The message text to send
+ */
+function postJSON($message) {
+    global $bot_token;
+    $result = json_decode(json_post_query_slack("https://slack.com/api/chat.postMessage",$bot_token,$message),true);
+    if(!isset($result["ok"]) || !$result["ok"]) {
+        writeToLog("Error posting json message".json_encode($message),"slack");
+        throw new Exception($result["error"]);
+    }
 }
 function postEphemeral($channel, $user, $text) {
     global $bot_token;
     $options = array(
         "token"=>$bot_token,
         "channel"=>$channel,
+        "user"=>$user,
         "text"=>$text,
         "as_user"=>false
     );
-    post_query_slack("https://slack.com/api/chat.postEphemeral",$optoins);
+    $result = json_decode(post_query_slack("https://slack.com/api/chat.postEphemeral",$options),true);
+    if(!isset($result["ok"]) || !$result["ok"]) {
+        writeToLog("Error posting ephemeral message".json_encode($result),"slack");
+        throw new Exception($result["error"]);
+    }
 }
 /**
  * Prevent slack from thinking the server timed out
@@ -154,6 +197,19 @@ function updateUserBalance($DB, $user, $newbalance) {
     $stmt->bind_param("ds",$newbalance,$user);
     $stmt->execute();
     $stmt->close();
+}
+/**
+ * Get all the users in the table, sorted in decending order by their balances
+ * @return array An array of associative arrays containing users' ids and balances
+ */
+function getScoreboard($DB) {
+    global $table;
+    $result = $DB->query("SELECT * FROM ".$table." ORDER BY `balance` DESC");
+    $out = array();
+    while($data = $result->fetch_assoc()) {
+        $out[] = $data;
+    }
+    return $out;
 }
 
 ?>

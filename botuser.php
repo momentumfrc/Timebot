@@ -18,39 +18,82 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
             echo(json_encode(array("challenge"=>$data["challenge"])));
             break;
         case "event_callback":
-            stopTimeout();
+            #stopTimeout();
             $event = $data["event"];
             switch($event["type"]) {
                 case "app_mention":
-                    $DB = createDBObject();
-                    checkUserInDB($DB, $event["user"]);
-                    $userinfo = getUserInfo($DB,$event["user"]);
-
-                    $response = "It's ".getDateString(floor($event["ts"]));
-                    $time = date("g:i a", floor($event["ts"]));
-
-                    $cost = $TIME_COST;
-                    switch($time) {
-                        case "4:20 am":
-                            $cost = $MEME_COST;
-                            $response .= "\nayyyy";
-                            $response .= "\n_It's too early for this shit_";
-                            break;
-                        case "4:20 pm":
-                            $cost = $MEME_COST;
-                            $response .= "\nayyy";
-                            break;
-                        case "10:00 pm":
-                            $cost = $MEME_COST;
-                            $response .= "\n_Goodnight Andrew_";
-                            break;
-                    }
-                    $timebucks = $userinfo["balance"] - $cost;
-                    if($timebucks < 0) {
-                        postMessage($event["channel"],$userinfo["id"],"I'm sorry <@".$userinfo["id"].">, but you have insufficient TimeBucks!\n This action costs $".number_format($cost,2)."\nYour current balance is $".number_format($userinfo["balance"],2));
+                    if(stripos($event["text"],"scoreboard") !== FALSE) {
+                        $DB = createDBObject();
+                        $scores = getScoreboard($DB);
+                        $message = "";
+                        if(count($scores) == 0) {
+                           $message = array (
+                               "channel"=>$event["channel"],
+                               "text"=>"I have no customers"
+                           );
+                        } else {
+                            $message = array(
+                                "channel"=>$event["channel"],
+                                "text"=>"My top 3 customers are:",
+                                "attachments"=>array()
+                            );
+                            for($i = 0; $i < min(count($scores), 3); $i++ ) {
+                                $message["attachments"][] = array(
+                                    "text"=> ($i+1).". <@".$scores[$i]["id"]."> with $".number_format($scores[$i]["balance"],2)
+                                );
+                            }
+                        }
+                        postJSON(json_encode($message));
+                    } elseif(stripos($event["text"],"flex") !== FALSE || stripos($event["text"],"rank") !== FALSE) {
+                        $DB = createDBObject();
+                        $scores = getScoreboard($DB);
+                        $rank = 1;
+                        $found = false;
+                        foreach($scores as $score) {
+                            if($score["id"] == $event["user"]) {
+                                $found = true;
+                                break;
+                            }
+                            $rank += 1;
+                        }
+                        if($found) {
+                            $message = "You, <@".$scores[$rank-1]["id"].">, are my #".$rank." customer with $".number_format($scores[$rank-1]["balance"],2);
+                        } else {
+                            $message = "You, <@".$event["user"].">, aren't one of my customers";
+                        }
+                        postMessage($event["channel"],$message);
                     } else {
-                        updateUserBalance($DB,$userinfo["id"],$timebucks);
-                        postMessage($event["channel"],$response);
+                        $DB = createDBObject();
+                        checkUserInDB($DB, $event["user"]);
+                        $userinfo = getUserInfo($DB,$event["user"]);
+
+                        $response = "It's ".getDateString(floor($event["ts"]));
+                        $time = date("g:i a", floor($event["ts"]));
+
+                        $cost = $TIME_COST;
+                        switch($time) {
+                            case "4:20 am":
+                                $cost = $MEME_COST;
+                                $response .= "\nayyyy";
+                                $response .= "\n_It's too early for this shit_";
+                                break;
+                            case "4:20 pm":
+                                $cost = $MEME_COST;
+                                $response .= "\nayyy";
+                                break;
+                            case "10:00 pm":
+                                $cost = $MEME_COST;
+                                $response .= "\n_Goodnight Andrew_";
+                                break;
+                        }
+                        $timebucks = $userinfo["balance"] - $cost;
+                        if($timebucks < 0) {
+                            $message = "I'm sorry <@".$userinfo["id"].">, but you have insufficient TimeBucks!\n This action costs $".number_format($cost,2)."\nYour current balance is $".number_format($userinfo["balance"],2);
+                            postMessage($event["channel"],$message);
+                        } else {
+                            updateUserBalance($DB,$userinfo["id"],$timebucks);
+                            postMessage($event["channel"],$response);
+                        }
                     }
                     break;
                 case "message";
@@ -61,17 +104,18 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
 
                     switch($event["channel_type"]) {
                         case "channel":
+                            writeToLog("Message of type ".$event["channel_type"]." from ".$event["user"],"events");
                             $text = strtolower($event["text"]);
                             $matches = array();
         
                             $valid_time = false;
         
-                            if(preg_match("/it\'?s 0?((1?[1-9]|2[0-4])\:[0-5][0-9])( |\$)/",$text,$matches)) {
+                            if(preg_match("/it\'?s 0?((1?[1-9]|2[0-4])\:[0-5][0-9])(\s|\$)/",$text,$matches)) {
                                 # 24 hour time
                                 $supposed_time = $matches[1];
                                 $current_time = date("G:i", floor($event["ts"]));
                                 $valid_time = $supposed_time == $current_time;
-                            } elseif(preg_match("/it\'?s 0?(([1-9]|1[0-2])\:[0-5][0-9]) ?(am|pm)/",$text,$matches)) {
+                            } elseif(preg_match("/it\'?s 0?(([1-9]|1[0-2])\:[0-5][0-9])\s?(am|pm)/",$text,$matches)) {
                                 # 12 hour time
                                 $supposed_time = $matches[1].$matches[3];
                                 $current_time = date("g:ia");
