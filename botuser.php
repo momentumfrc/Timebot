@@ -202,18 +202,27 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                             $matches = array();
         
                             $valid_time = false;
-                            
-                            writeToLog("Matching \"".$text."\" ?".(preg_match("/it\'?s 0?(([1-9]|1[0-2])\:[0-5][0-9]) ?(am|pm)/",$text)?"true":"false"),"events");
+
+                            $userinfo = getSlackProfile($event["user"]);
+                            $tz = floor($userinfo["tz_offset"]/3600);
+
+                            writeToLog("Creating datetime using time ".$event["ts"]." and timezone offset ".$tz,"events");
 
                             if(preg_match("/it(\'|’)?s 0?(([1-9]|1[0-2])\:[0-5][0-9]) ?(am|pm)/",$text,$matches)) {
                                 # 12 hour time
                                 $supposed_time = $matches[2].$matches[4];
-                                $current_time = date("g:ia", floor($event["ts"]));
+                                $current_datetime = new DateTime("@".floor($event["ts"]));
+                                $current_datetime->setTimezone(new DateTimeZone($tz));
+                                $current_time = $current_datetime->format("g:ia");
+                                writeToLog("It's ".$current_time." and the user said it's ".$supposed_time,"events");
                                 $valid_time = $supposed_time == $current_time;
                             } elseif(preg_match("/it(\'|’)?s 0?((1?[1-9]|2[0-4])\:[0-5][0-9])/",$text,$matches)) {
                                 # 24 hour time
                                 $supposed_time = $matches[2];
-                                $current_time = date("G:i", floor($event["ts"]));
+                                $current_datetime = new DateTime("@".floor($event["ts"]));
+                                $current_datetime->setTimezone(new DateTimeZone($tz));
+                                $current_time = $current_datetime->format("G:i");
+                                writeToLog("It's ".$current_time." and the user said it's ".$supposed_time,"events");
                                 $valid_time = $supposed_time == $current_time;
                             }
         

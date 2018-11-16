@@ -132,7 +132,7 @@ function getSlackProfile($user) {
         writeToLog("Error getting slack profile:".json_encode($result),"slack");
         throw new Exception($result["error"]);
     }
-    return $result;
+    return $result["user"];
 }
 /**
  * Prevent slack from thinking the server timed out
