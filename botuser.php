@@ -67,6 +67,73 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                             $message = "You, <@".$event["user"].">, aren't one of my customers";
                         }
                         postMessage($event["channel"],$message);
+                    # TRANSFER
+                    } elseif (stripos($event["text"],"gift") !== FALSE || stripos($event["text"],"send")) {
+                        // @timebot gift @user 10
+                        $verbs = explode(" ",$event["text"]);
+
+                        if( !(strtolower($verbs[1]) == "gift" || strtolower($verbs[1]) == "send") || count($verbs) != 4) {
+                            postMessage($event["channel"], "Invalid syntax.\nUsage: `@timebot gift [user] [amount]`");
+                            break;
+                        }
+
+                        $user = $verbs[2];
+                        $amount = $verbs[3];
+
+                        if($verbs[0] == $verbs[2]) {
+                            postMessage($event["channel"], "What use would I have for TimeBucks?");
+                            break;
+                        }
+
+                        $matches = array();
+                        if(preg_match("/\\$?([0-9.]+)/", $amount, $matches) && is_numeric($matches[1])) {
+                            $amount = $matches[1];
+                        } else {
+                            // post invalid amount error
+                            postMessage($event["channel"], "I'm sorry, ".$verbs[3]." is not a valid number of TimeBucks");
+                            break;
+                        }
+                        $matches = array();
+                        $user_regex = false;
+                        $user_info = false;
+                        if(preg_match("/<@([[:alnum:]]{9})>/",$user, $matches)) {
+                            $user_regex = true;
+                            $user = strtoupper($matches[1]);
+                        }
+                        try {
+                            $userinfo = getSlackProfile($user);
+                            $user_info = true;
+                        } catch (Exception $e) {
+                            $user_info = false;
+                        }
+                        if(!$user_regex || !$user_info) {
+                            // post invalid user error
+                            postMessage($event["channel"], "I'm sorry, ".$verbs[2]." is not a valid user");
+                            break;
+                        }
+
+                        writeToLog("Transferring ".$amount." from ".$event["user"]." to ".$user, "events");
+
+                        $DB = createDBObject();
+                        checkUserInDB($DB, $event["user"]);
+                        checkUserInDB($DB, $user);
+                        $senderinfo = getUserInfo($DB,$event["user"]);
+                        $recieverinfo = getUserInfo($DB,$user);
+
+                        $senderBalance = $senderinfo["balance"] - $amount;
+                        $recieverBalance = $recieverinfo["balance"] + $amount;
+
+                        if($senderBalance < 0) {
+                            // post not enough timebucks error
+                            postMessage($event["channel"], "I'm sorry, you can't send $".number_format($amount,2)." because you only have $".number_format($senderinfo["balance"],2));
+                            break;
+                        }
+
+                        updateUserBalance($DB,$senderinfo["id"],$senderBalance);
+                        updateUserBalance($DB,$recieverinfo["id"],$recieverBalance);
+
+                        postMessage($event["channel"],"<@".$event["user"]."> sent <@".$user."> $".number_format($amount,2)."!");
+                        
                     # NORMAL
                     } else {
                         $actions = json_decode(file_get_contents("actions.json"), true);

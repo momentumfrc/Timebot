@@ -88,6 +88,12 @@ function postJSON($message) {
         throw new Exception($result["error"]);
     }
 }
+/**
+ * Post an ephemeral message to slack
+ * @param string $channel The channel to post to
+ * @param string $user The user the message should be visible to
+ * @param string $text The message text to send
+ */
 function postEphemeral($channel, $user, $text) {
     global $bot_token;
     $options = array(
@@ -111,9 +117,22 @@ function postEphemeralJSON($message) {
     global $bot_token;
     $result = json_decode(json_post_query_slack("https://slack.com/api/chat.postEphemeral",$bot_token,$message),true);
     if(!isset($result["ok"]) || !$result["ok"]) {
-        writeToLog("Error posting json message".json_encode($message),"slack");
+        writeToLog("Error posting json message".json_encode($result),"slack");
         throw new Exception($result["error"]);
     }
+}
+/**
+ * Get info about a slack user
+ * @param string $user The user who's profile is to be retrieved
+ */
+function getSlackProfile($user) {
+    global $bot_token;
+    $result = json_decode(get_query_slack("https://slack.com/api/users.info",array("token"=>$bot_token,"user"=>$user)),true);
+    if(!isset($result["ok"]) || !$result["ok"]) {
+        writeToLog("Error getting slack profile:".json_encode($result),"slack");
+        throw new Exception($result["error"]);
+    }
+    return $result;
 }
 /**
  * Prevent slack from thinking the server timed out
