@@ -21,6 +21,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
             $event = $data["event"];
             switch($event["type"]) {
                 case "app_mention":
+                    # SCOREBOARD
                     if(stripos($event["text"],"scoreboard") !== FALSE) {
                         $DB = createDBObject();
                         $scores = getScoreboard($DB);
@@ -37,12 +38,17 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                                 "attachments"=>array()
                             );
                             for($i = 0; $i < min(count($scores), 3); $i++ ) {
-                                $message["attachments"][] = array(
+                                $attach = array(
                                     "text"=> ($i+1).". <@".$scores[$i]["id"]."> with $".number_format($scores[$i]["balance"],2)
                                 );
+                                if($i == 0) { $attach["color"] = "#FFD700"; }
+                                if($i == 1) { $attach["color"] = "#COCOCO"; }
+                                if($i == 2) { $attach["color"] = "#CD7F32"; }
+                                $message["attachments"][] = $attach;
                             }
                         }
                         postJSON(json_encode($message));
+                    # FLEX
                     } elseif(stripos($event["text"],"flex") !== FALSE || stripos($event["text"],"rank") !== FALSE) {
                         $DB = createDBObject();
                         $scores = getScoreboard($DB);
@@ -61,6 +67,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                             $message = "You, <@".$event["user"].">, aren't one of my customers";
                         }
                         postMessage($event["channel"],$message);
+                    # NORMAL
                     } else {
                         $actions = json_decode(file_get_contents("actions.json"), true);
 
