@@ -3,6 +3,7 @@ include 'functions.php';
 
 $TIMEBUCKS_RATE_LIMIT = 3600;
 $TIMEBUCKS_INCREMENT = 1;
+$TIMEBUCKS_MENTOR_BONUS = .5;
 
 if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
     $headers = getallheaders();
@@ -230,8 +231,14 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                                 $DB = createDBObject();
                                 checkUserInDB($DB, $event["user"]);
                                 $userinfo = getUserInfo($DB,$event["user"]);
+								$userID = getUserInfo($id);
+								$mentor = getMentors($users["users"]);
                                 if(floor($event["ts"]) - $userinfo["cooldown"] > $TIMEBUCKS_RATE_LIMIT) {
-                                    $timebucks = $userinfo["balance"] + $TIMEBUCKS_INCREMENT;
+									if($userID == $mentor){
+										$timebucks = $userinfo["balance"] + $TIMEBUCKS_INCREMENT + $TIMEBUCKS_MENTOR_BONUS;
+									} else {
+										$timebucks = $userinfo["balance"] + $TIMEBUCKS_INCREMENT;
+									}
                                     updateUserBalance($DB, $userinfo["id"],$timebucks);
                                     $message = "Your TimeBucks balance is now $".number_format($timebucks,2);
                                     postEphemeral($event["channel"],$userinfo["id"],$message);
