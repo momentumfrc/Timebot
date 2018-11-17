@@ -260,4 +260,13 @@ function getScoreboard($DB) {
     return $out;
 }
 
+function getMentors($users) {
+    global $bot_token;
+    $result = json_decode(get_query_slack("https://slack.com/api/usergroups.users.list",array("token"=>$bot_token,"users"=>$users)),true);
+    if(!isset($result["ok"]) || !$result["ok"]) {
+        writeToLog("Error getting slack profile:".json_encode($result),"slack");
+        throw new Exception($result["error"]);
+    }
+    return $result;
+}
 ?>
