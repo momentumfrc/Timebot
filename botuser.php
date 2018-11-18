@@ -230,7 +230,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                                 $DB = createDBObject();
                                 checkUserInDB($DB, $event["user"]);
                                 $userinfo = getUserInfo($DB,$event["user"]);
-                                if(floor($event["ts"]) - $userinfo["cooldown"] > $TIMEBUCKS_RATE_LIMIT) {
+                                if(floor($event["ts"]) - $userinfo["cooldown"] >= $TIMEBUCKS_RATE_LIMIT) {
                                     $timebucks = $userinfo["balance"] + $TIMEBUCKS_INCREMENT;
                                     updateUserBalance($DB, $userinfo["id"],$timebucks);
                                     $message = "Your TimeBucks balance is now $".number_format($timebucks,2);
@@ -238,7 +238,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                                 } else {
                                     postEphemeral($event["channel"],$userinfo["id"],"TimeBucks can only be earned once every ".($TIMEBUCKS_RATE_LIMIT/3600)." hours.\nYour next TimeBuck unlocks at ".date("g:i a",floor($event["ts"])+$TIMEBUCKS_RATE_LIMIT));
                                 }
-                                resetUserCooldown($DB, $userinfo["id"], floor($event["ts"]));
+                                $newtime = floor($event["ts"]);
+                                $newtime = $newtime - ($newtime % 60);
+                                resetUserCooldown($DB, $userinfo["id"], $newtime);
                             }
                             
                             # Respond to an 'ayyy' in #random
