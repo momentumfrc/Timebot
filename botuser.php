@@ -120,8 +120,14 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                         $senderinfo = getUserInfo($DB,$event["user"]);
                         $recieverinfo = getUserInfo($DB,$user);
 
-                        $senderBalance = $senderinfo["balance"] - $amount;
+                        if($senderinfo["id"] == $recieverinfo["id"]) {
+                            postMessage($event["channel"], "You can't transfer to yourself!");
+                            break;
+                        }
+
                         $recieverBalance = $recieverinfo["balance"] + $amount;
+                        $senderBalance = $senderinfo["balance"] - $amount;
+                        
 
                         if($senderBalance < 0) {
                             // post not enough timebucks error
