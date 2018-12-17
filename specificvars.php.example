@@ -1,4 +1,22 @@
 <?php
+date_default_timezone_set("America/Los_Angeles");
+
 $slack_signing_secret = "";
 $bot_token = "";
+
+$slack_clientid = "";
+$slack_clientsecret = "";
+
+$slack_teamids = array("T131347T4");
+
+$db = "";
+$table = "";
+
+$dbuser = "";
+$dbpass = "";
+
+/* 
+$table will have the following schema: (`time` VARCHAR(10) PRIMARY KEY, `responses` TEXT NOT NULL) 
+    `responses` will be json encoded, of the format [{"text":"It's @time\nayyyy", "freq":20}]
+*/
 ?>
