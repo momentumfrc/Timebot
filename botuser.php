@@ -60,6 +60,8 @@ $addendums = array(
     "_What mind-numbingly dull task shall I perform next?_"
 );
 
+$kickoff_timestamp = 1546702200;
+                        
 function normalResponse($event) {
     global $addendums;
     $response = "It's ".getDateString(floor($event["ts"]));
@@ -77,8 +79,6 @@ function normalResponse($event) {
                 $response .= "\nayyy";
             } elseif ($val == 2) {
                 $response = "no";
-            } elseif ($val == 3) {
-                $response = 'Please pay $0.99 to unlock this dank meme';
             }
             break;
         case "10:00 pm":
@@ -88,9 +88,9 @@ function normalResponse($event) {
             $response .= "\n_Make a wish!_";
             break;
         default:
-            if(rand(0,4) == 1) {
+            /*if(rand(0,4) == 1) {
                 $response .= "\n".$addendums[array_rand($addendums)];
-            }
+            }*/
             break;
     }
     postMessage($event["channel"],$response);
@@ -113,8 +113,19 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
             $event = $data["event"];
             switch($event["type"]) {
                 case "app_mention":
-                    # Moved all the logic to the normalResponse() method so that timebot can respond to phrases other than just '@timebot'
-                    normalResponse($event);
+                    if(stripos($event["text"],"countdown") !== FALSE && time() < $kickoff_timestamp) {
+                        $secs = $kickoff_timestamp - time();
+                        $days_left = floor($secs / (60 * 60 * 24));
+                        $hours_left = floor(($secs % (60 * 60 * 24)) / (60 * 60));
+                        $minutes_left = floor((($secs % (60 * 60 * 24)) % (60 * 60)) / 60);
+                        $seconds_left = floor((($secs % (60 * 60 * 24)) % (60 * 60)) % 60);
+                        
+                        $message = "Kickoff will begin on <!date^".$kickoff_timestamp."^{date_pretty} at {time}|".date("%F %j%s, %Y at %g:%i %A %T").">\nOnly ".$days_left." days, ".$hours_left." hours, ".$minutes_left." minutes, and ".$seconds_left." seconds left!";
+                        postMessage($event["channel"], $message);
+
+                    } else {
+                        normalResponse($event);
+                    }
                     break;
                 case "message":
                     #writeToLog("Message of type ".$event["channel_type"]." from ".$event["user"],"events");
