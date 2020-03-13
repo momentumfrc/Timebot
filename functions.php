@@ -262,4 +262,12 @@ function getScoreboard($DB) {
     return $out;
 }
 
+function load_settings() {
+    return json_decode(file_get_contents("settings.json"), true);
+}
+
+function save_settings($settings) {
+    file_put_contents("settings.json", json_encode($settings));
+}
+
 ?>
