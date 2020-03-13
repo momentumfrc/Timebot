@@ -221,6 +221,8 @@ function getUserInfo($DB, $user) {
  */
 function updateUserBalance($DB, $user, $newbalance) {
     global $table;
+    $userinfo = getUserInfo($DB, $user);
+    writeToLog($user." ".$userinfo["balance"]." -> ".$newbalance,"balance");
     $stmt = $DB->prepare("UPDATE ".$table." SET `balance`=? WHERE `id`=?");
     if($stmt === FALSE) {
         throw new Exception($DB->error);
