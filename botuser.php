@@ -16,13 +16,14 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
         case "event_callback":
             stopTimeout();
             $event = $data["event"];
+            
+            $settings = load_settings();
+
+            $TIMEBUCKS_RATE_LIMIT = $settings["rate_limit"];
+            $TIMEBUCKS_INCREMENT = $settings["increment"];
+            
             switch($event["type"]) {
                 case "app_mention":
-
-                    $settings = load_settings();
-
-                    $TIMEBUCKS_RATE_LIMIT = $settings["rate_limit"];
-                    $TIMEBUCKS_INCREMENT = $settings["increment"];
 
                     if(!$settings["enabled"]) {
                         exit();
@@ -224,7 +225,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                                 
                                 if(preg_match("/(I|i)t(\'|’)?s 0?(([1-9]|1[0-2])\:[0-5][0-9]) ?(am|pm)/",$text,$matches)) {
                                     # 12 hour time
-                                    $supposed_time = $matches[2].$matches[4];
+                                    $supposed_time = $matches[3].$matches[5];
                                     $current_datetime = new DateTime("@".floor($event["ts"]));
                                     $current_datetime->setTimezone(new DateTimeZone($tz));
                                     $current_time = $current_datetime->format("g:ia");
@@ -232,7 +233,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && verifySlack()) {
                                     $valid_time = $supposed_time == $current_time;
                                 } elseif(preg_match("/(I|i)t(\'|’)?s 0?((1?[1-9]|2[0-4])\:[0-5][0-9])/",$text,$matches)) {
                                     # 24 hour time
-                                    $supposed_time = $matches[2];
+                                    $supposed_time = $matches[3];
                                     $current_datetime = new DateTime("@".floor($event["ts"]));
                                     $current_datetime->setTimezone(new DateTimeZone($tz));
                                     $current_time = $current_datetime->format("G:i");
