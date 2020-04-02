@@ -1,13 +1,14 @@
 <?php
-require 'logger.php';
 
 class SlackUser {
     public $id;
     public $tz_offset;
+    public $is_bot;
 
-    function __construct(string $id, int $tz_offset) {
+    function __construct(string $id, int $tz_offset, $is_bot) {
         $this->id = $id;
         $this->tz_offset = $tz_offset;
+        $this->is_bot = $is_bot;
     }
 }
 
@@ -49,15 +50,15 @@ class SlackClient {
     function verify_request_origin() {
         $headers = getallheaders();
         if(!isset($headers['X-Slack-Request-Timestamp']) || !isset($headers['X-Slack-Signature'])) {
-            error("verify_request_origin", "missing headers");
+            $this->error("verify_request_origin", "missing headers");
             return false;
         }
         if(abs(time() - $headers['X-Slack-Request-Timestamp']) > 60 * 5) {
-            error("verify_request_origin", "request too old");
+            $this->error("verify_request_origin", "request too old");
             return false;
         }
         $signature = 'v0:' . $headers['X-Slack-Request-Timestamp'] . ":" . file_get_contents('php://input');
-        $signature_hashed = 'v0=' . hash_hmac('sha256', $signature, $slack_signing_secret);
+        $signature_hashed = 'v0=' . hash_hmac('sha256', $signature, $this->signing_secret);
         return hash_equals($signature_hashed, $headers['X-Slack-Signature']);
     }
 
@@ -123,7 +124,7 @@ class SlackClient {
         }
 
         $member = $response["user"];
-        return new SlackUser($member["id"], $member["tz_offset"]);
+        return new SlackUser($member["id"], $member["tz_offset"], $member["is_bot"]);
     }
 
 }
