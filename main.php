@@ -2,15 +2,25 @@
 require_once 'vars.php';
 require_once 'slack-client.php';
 require_once 'response.php';
+require_once 'database.php';
+require_once 'logger.php';
+
+date_default_timezone_set("America/Los_Angeles");
 
 function request_error(string $message) {
     http_response_code(400);
-    die($message);
+    die(json_encode(array(
+        "ok" => "false",
+        "error" => $message
+    )));
 }
 
 function server_error(string $message) {
     http_response_code(500);
-    die($message);
+    die(json_encode(array(
+        "ok" => "false",
+        "error" => $message
+    )));
 }
 
 if($_SERVER["REQUEST_METHOD"] !== "POST") {
@@ -39,9 +49,10 @@ switch($data["type"]) {
     break;
     case "event_callback":
         $event_assoc = $data["event"];
-        $event = new ChannelMessage($event_assoc["type"], $event_assoc["channel"], $event_assoc["user"], $event_assoc["text"], $event_assoc["ts"]);
-        switch($event->type) {
+        error_log(json_encode($event_assoc));
+        switch($event_assoc["type"]) {
             case "app_mention":
+                $event = new ChannelMessage($event_assoc["type"], $event_assoc["channel"], $event_assoc["user"], $event_assoc["text"], $event_assoc["ts"]);
                 $matches = array();
                 if(preg_match("/^\S*\s?([[:alnum:]]*)/", $event->text, $matches)) {
                     $command = $matches[1];
@@ -56,13 +67,17 @@ switch($data["type"]) {
                 }
             break;
             case "message":
-                if($event_assoc["subtype"] === "bot_message" || $event["user"] == "") {
-                    exit();
+                if(isset($event_assoc["subtype"])) {
+                    break;
                 }
+                if(isset($event_assoc["bot_id"])) {
+                    break;
+                }
+                $event = new ChannelMessage($event_assoc["type"], $event_assoc["channel"], $event_assoc["user"], $event_assoc["text"], $event_assoc["ts"]);
                 switch($event_assoc["channel_type"]) {
                     case "channel":
                         foreach($conversation_responses as $response_name) {
-                            if( ($conversation_responses.'::should_respond')($event->text) ) {
+                            if( ($response_name.'::should_respond')(strtolower($event->text)) ) {
                                 $response = new $response_name($slack, $db, $event);
                                 $response->respond();
                             }

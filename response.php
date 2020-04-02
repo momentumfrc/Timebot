@@ -1,5 +1,4 @@
 <?php
-require 'Logger.php';
 
 class ChannelMessage {
     public $type;
@@ -28,7 +27,7 @@ interface CommandResponse extends Response {
 }
 
 interface ConversationResponse extends Response {
-    static function should_respond($message_text);
+    static function should_respond(string $message_text);
 }
 
 class ScoreboardResponse implements CommandResponse {
@@ -63,15 +62,15 @@ class ScoreboardResponse implements CommandResponse {
                     $current_balance = $user->balance;
                     $current_level += 1;
                 }
-                if($current_level === 0) { $mesasge_text .= "\n:first_place_medal: "; }
+                if($current_level === 0) { $message_text .= "\n:first_place_medal: "; }
                 if($current_level === 1) { $message_text .= "\n:second_place_medal: "; }
                 if($current_level === 2) { $message_text .= "\n:third_place_medal: "; }
                 if($current_level >= 3) { break; }
 
-                $amount = number_format($users[$i]->balance, 2);
-                $message_text .= "<@".$users[$i]->id."> with $".$amount;
+                $amount = number_format($user->balance, 2);
+                $message_text .= "<@".$user->id."> with $".$amount;
                 if($amount === "49.99") {
-                    $message_text .= ":hyperlogo:";
+                    $message_text .= " :hyperlogo:";
                 }
             }
             $message = array(
@@ -154,8 +153,9 @@ class TransferResponse implements CommandResponse {
         $raw_reciever = strtolower($verbs[2]);
         $raw_amount = $verbs[3];
 
-        if(strtolower($timebot) === strtolower($user)) {
+        if(strtolower($timebot) === strtolower($raw_reciever)) {
             $this->post_plaintext("What use would I have for TimeBucks?");
+            return;
         }
 
         $amount = null;
@@ -169,11 +169,23 @@ class TransferResponse implements CommandResponse {
 
         $reciever_str = null;
         $matches = array();
-        if(preg_match("/<@([[:alnum:]]{9})>/",$raw_reciever, $matches)) {
+        if(preg_match("/<@([[:alnum:]]*)>/",$raw_reciever, $matches)) {
             $reciever_str = strtoupper($matches[1]);
         } else {
             $this->post_plaintext("I'm sorry, $raw_reciever is not a valid user");
+            return;
         }
+        
+        $reciever_slack = $this->slack->user_info($reciever_str);
+        if($reciever_slack === null) {
+            $this->post_plaintext("I'm sorry, $raw_reciever is not a valid user");
+            return;
+        }
+        if($reciever_slack->is_bot) {
+            $this->post_plaintext("Bots have no use for Timebucks!");
+            return;
+        }
+
 
         $this->db->add_user_if_not_exists($this->message->user);
         $this->db->add_user_if_not_exists($reciever_str);
@@ -182,7 +194,7 @@ class TransferResponse implements CommandResponse {
         $reciever = $this->db->get_user($reciever_str);
 
         if($sender->id === $reciever->id) {
-            $this->post_plaintext("You cant transfer to yourself!");
+            $this->post_plaintext("You can't transfer to yourself!");
             return;
         }
         
@@ -197,6 +209,7 @@ class TransferResponse implements CommandResponse {
         $reciever->balance += $amount;
 
         $this->db->save_users(array($sender, $reciever));
+        $this->post_plaintext("<@$sender->id> sent <@$reciever->id> $".number_format($amount,2)."!");
     }
 }
 
@@ -219,8 +232,8 @@ class TimePromptResponse implements CommandResponse {
         $actions = json_decode(file_get_contents("actions.json"), true);
 
         $message = array(
-            "channel"=>$event["channel"],
-            "user"=>$event["user"],
+            "channel"=>$this->message->channel,
+            "user"=>$this->message->user,
             "text"=>"Your device does not support choosing a message",
             "attachments"=>array(),
             "blocks"=>array(
@@ -273,11 +286,11 @@ class TimePromptResponse implements CommandResponse {
                             "type"=>"mrkdwn",
                             "text"=>"This action will use $".number_format($action["cost"],2)
                         ),
-                        "ok_text"=>array(
+                        "confirm"=>array(
                             "type"=>"plain_text",
                             "text"=>"Yes"
                         ),
-                        "dismiss_text"=>array(
+                        "deny"=>array(
                             "type"=>"plain_text",
                             "text"=>"No"
                         )
@@ -286,6 +299,7 @@ class TimePromptResponse implements CommandResponse {
             }
         }
 
+        error_log(json_encode($message));
         $this->slack->chat_postEphemeral($message);
     }
 }
@@ -300,7 +314,7 @@ class AwardTimebucksResponse implements ConversationResponse {
 
     function __construct(SlackClient $slack, Database $database, ChannelMessage $message) {
         $this->slack = $slack;
-        $this->db = $db;
+        $this->db = $database;
         $this->message = $message;
     }
 
@@ -318,6 +332,8 @@ class AwardTimebucksResponse implements ConversationResponse {
 
         $current_datetime = new DateTime("@".floor($this->message->ts));
         $current_datetime->setTimezone(new DateTimeZone($tz));
+
+        $text = strtolower($this->message->text);
 
         if(preg_match("/^it(\'|’)?s ((0?[1-9]|1[0-2])\:[0-5][0-9]) ?(am|pm)/",$text,$matches)) {
             $supposed_time = $matches[2].$matches[4];
@@ -337,7 +353,7 @@ class AwardTimebucksResponse implements ConversationResponse {
 
             if(floor($this->message->ts) - $user->cooldown < self::TIMEBUCKS_RATE_LIMIT) {
                 $frequency_hours = self::TIMEBUCKS_RATE_LIMIT/3600;
-                $hours_formatted = number_format($frequency_hours, 2)."hours";
+                $hours_formatted = number_format($frequency_hours, 2)." hours";
                 if($frequency_hours == 1) {
                     $hours_formatted = "hour";
                 }
@@ -360,7 +376,9 @@ class AwardTimebucksResponse implements ConversationResponse {
 
             $message = array(
                 "channel"=>$this->message->channel,
-                "text"=>$message_text
+                "text"=>$message_text,
+                "user"=>$user->id,
+                "attachments"=>array()
             );
 
             $this->slack->chat_postEphemeral($message);

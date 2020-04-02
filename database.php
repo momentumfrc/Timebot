@@ -54,7 +54,7 @@ class Database {
         return $out;
     }
 
-    function save_users(array $user) {
+    function save_users(array $users) {
         $stmt = $this->prepare_statement("UPDATE ".$this->table." SET `balance`=?, `cooldown`=? WHERE `id`=?");
         $stmt->bind_param("dds", $balance, $cooldown, $id);
         foreach($users as $user) {
@@ -71,8 +71,9 @@ class Database {
     }
 
     function get_scoreboard(int $limit) {
-        $stmt = $this->prepare_statement("SELECT `id`, `balance`, `cooldown` FROM `$this->table` JOIN ( SELECT DISTINCT `balance` FROM `$this->table` ORDER BY `balance` DESC LIMIT ? ) tlim ON `balance_test`.`balance` = tlim.`balance` ORDER BY `balance_test`.`balance` DESC");
+        $stmt = $this->prepare_statement("SELECT `id`, `$this->table`.`balance`, `cooldown` FROM `$this->table` JOIN ( SELECT DISTINCT `balance` FROM `$this->table` ORDER BY `balance` DESC LIMIT ? ) tlim ON `$this->table`.`balance` = tlim.`balance` ORDER BY `$this->table`.`balance` DESC");
         $stmt->bind_param("d", $limit);
+        $stmt->execute();
         $stmt->bind_result($id, $balance, $cooldown);
 
         $users = array();
@@ -84,10 +85,12 @@ class Database {
         return $users;
     }
 
-    function get_user_rank(int $score) {
+    function get_user_rank(float $score) {
         $stmt = $this->prepare_statement("SELECT COUNT(DISTINCT `balance`) FROM `$this->table` WHERE `balance` >= ?");
         $stmt->bind_param("d", $score);
+        $stmt->execute();
         $stmt->bind_result($location);
+        $stmt->fetch();
         $stmt->close();
         return $location;
     }
