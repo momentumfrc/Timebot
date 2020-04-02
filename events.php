@@ -9,6 +9,7 @@ date_default_timezone_set("America/Los_Angeles");
 
 function request_error(string $message) {
     http_response_code(400);
+    error_log("request_error: $message");
     die(json_encode(array(
         "ok" => "false",
         "error" => $message
@@ -17,6 +18,7 @@ function request_error(string $message) {
 
 function server_error(string $message) {
     http_response_code(500);
+    error_log("server_error: $message");
     die(json_encode(array(
         "ok" => "false",
         "error" => $message
@@ -25,6 +27,11 @@ function server_error(string $message) {
 
 if($_SERVER["REQUEST_METHOD"] !== "POST") {
     request_error("invalid_request_method");
+}
+
+$headers = getallheaders();
+if($headers["Content-Type"] !== "application/json") {
+    request_error("invalid_mime_type");
 }
 
 // TODO: maybe validate that the two input variables exist and aren't empty?
@@ -49,7 +56,6 @@ switch($data["type"]) {
     break;
     case "event_callback":
         $event_assoc = $data["event"];
-        error_log(json_encode($event_assoc));
         switch($event_assoc["type"]) {
             case "app_mention":
                 $event = new ChannelMessage($event_assoc["type"], $event_assoc["channel"], $event_assoc["user"], $event_assoc["text"], $event_assoc["ts"]);

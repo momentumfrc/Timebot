@@ -42,7 +42,7 @@ class ScoreboardResponse implements CommandResponse {
     }
 
     static function get_trigger_words() {
-        return array("scoreboard");
+        return array("scoreboard", "score");
     }
 
     function respond() {
@@ -249,7 +249,7 @@ class TimePromptResponse implements CommandResponse {
                 )
             )
         );
-
+        $counter = 1;
         foreach($actions as $action) {
             $add = false;
             if($action["time"] === "any") {
@@ -275,7 +275,7 @@ class TimePromptResponse implements CommandResponse {
                         "type"=>"plain_text",
                         "text"=>$action["display"]
                     ),
-                    "action_id"=>"tb_option",
+                    "action_id"=>"tb_option_".($counter++),
                     "value"=>$action["name"],
                     "confirm"=>array(
                         "title"=>array(
@@ -298,7 +298,6 @@ class TimePromptResponse implements CommandResponse {
                 );
             }
         }
-
         error_log(json_encode($message));
         $this->slack->chat_postEphemeral($message);
     }
@@ -420,7 +419,7 @@ class DMResponse implements Response {
 
     function __construct(SlackClient $slack, Database $database, ChannelMessage $message) {
         $this->slack = $slack;
-        $this->db = $db;
+        $this->db = $database;
         $this->message = $message;
     }
 
