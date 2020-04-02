@@ -3,15 +3,14 @@ require 'Logger.php';
 
 class ChannelMessage {
     public $type;
-    public $subtype;
     public $channel;
+    public $channel_type;
     public $user;
     public $text;
     public $ts;
 
-    function __construct(string $type, string $subtype, string $channel, string $user, string $text, float $ts) {
+    function __construct(string $type, string $channel, string $user, string $text, float $ts) {
         $this->type = $type;
-        $this->subtype = $subtype;
         $this->channel = $channel;
         $this->user = $user;
         $this->text = $text;
@@ -20,10 +19,19 @@ class ChannelMessage {
 }
 
 interface Response {
+    function __construct(SlackClient $slack, Database $database, ChannelMessage $message);
     function respond();
 }
 
-class ScoreboardResponse implements Response {
+interface CommandResponse extends Response {
+    static function get_trigger_words();
+}
+
+interface ConversationResponse extends Response {
+    static function should_respond($message_text);
+}
+
+class ScoreboardResponse implements CommandResponse {
     private $slack;
     private $db;
     private $message;
@@ -32,6 +40,10 @@ class ScoreboardResponse implements Response {
         $this->slack = $slack;
         $this->db = $database;
         $this->message = $message;
+    }
+
+    static function get_trigger_words() {
+        return array("scoreboard");
     }
 
     function respond() {
@@ -71,7 +83,7 @@ class ScoreboardResponse implements Response {
     }
 }
 
-class FlexResponse implements Response {
+class FlexResponse implements CommandResponse {
     private $slack;
     private $db;
     private $message;
@@ -80,6 +92,10 @@ class FlexResponse implements Response {
         $this->slack = $slack;
         $this->db = $database;
         $this->message = $message;
+    }
+
+    static function get_trigger_words() {
+        return array("flex", "rank");
     }
 
     function respond() {
@@ -102,7 +118,7 @@ class FlexResponse implements Response {
     }
 }
 
-class TransferResponse implements Response {
+class TransferResponse implements CommandResponse {
     private $slack;
     private $db;
     private $message;
@@ -111,6 +127,10 @@ class TransferResponse implements Response {
         $this->slack = $slack;
         $this->db = $database;
         $this->message = $message;
+    }
+
+    static function get_trigger_words() {
+        return array("gift", "send");
     }
 
     private function post_plaintext($message_text) {
@@ -180,7 +200,7 @@ class TransferResponse implements Response {
     }
 }
 
-class TimePromptResponse implements Response {
+class TimePromptResponse implements CommandResponse {
     private $slack;
     private $db;
     private $message;
@@ -189,6 +209,10 @@ class TimePromptResponse implements Response {
         $this->slack = $slack;
         $this->db = $database;
         $this->message = $message;
+    }
+
+    static function get_trigger_words() {
+        return array("");
     }
 
     function respond() {
@@ -266,7 +290,7 @@ class TimePromptResponse implements Response {
     }
 }
 
-class AwardTimebucksResponse implements Response {
+class AwardTimebucksResponse implements ConversationResponse {
     private $slack;
     private $db;
     private $message;
@@ -281,7 +305,7 @@ class AwardTimebucksResponse implements Response {
     }
 
     static function should_respond(string $text) {
-        return preg_match("/it(\'|’)?s /", $text);
+        return preg_match("/^it(\'|’)?s /", $text);
     }
 
     function respond() {
@@ -295,11 +319,11 @@ class AwardTimebucksResponse implements Response {
         $current_datetime = new DateTime("@".floor($this->message->ts));
         $current_datetime->setTimezone(new DateTimeZone($tz));
 
-        if(preg_match("/it(\'|’)?s ((0?[1-9]|1[0-2])\:[0-5][0-9]) ?(am|pm)/",$text,$matches)) {
+        if(preg_match("/^it(\'|’)?s ((0?[1-9]|1[0-2])\:[0-5][0-9]) ?(am|pm)/",$text,$matches)) {
             $supposed_time = $matches[2].$matches[4];
             $current_time = $current_datetime->format("g:ia");
             $valid_time = $supposed_time == $current_time;
-        } elseif(preg_match("/it(\'|’)?s (((0|1)?[0-9]|2[0-3])\:[0-5][0-9])/",$text,$matches)) {
+        } elseif(preg_match("/^it(\'|’)?s (((0|1)?[0-9]|2[0-3])\:[0-5][0-9])/",$text,$matches)) {
             $supposed_time = $matches[2];
             $current_time = $current_datetime->format("G:i");
             $valid_time = $supposed_time == $current_time;
@@ -344,7 +368,7 @@ class AwardTimebucksResponse implements Response {
     }
 }
 
-class AyyyResponse implements Response {
+class AyyyResponse implements ConversationResponse {
     private $slack;
     private $db;
     private $message;
@@ -353,6 +377,10 @@ class AyyyResponse implements Response {
         $this->slack = $slack;
         $this->db = $db;
         $this->message = $message;
+    }
+
+    static function should_respond(string $text) {
+        return preg_match("/[Aa]y{3,4}/", $text);
     }
 
     function respond() {
@@ -366,5 +394,32 @@ class AyyyResponse implements Response {
         }
     }
 }
+
+class DMResponse implements Response {
+    private $slack;
+    private $db;
+    private $message;
+
+    function __construct(SlackClient $slack, Database $database, ChannelMessage $message) {
+        $this->slack = $slack;
+        $this->db = $db;
+        $this->message = $message;
+    }
+
+    function respond() {
+        $this->db->add_user_if_not_exists($this->message->user);
+        $user = $this->db->get_user($this->message->user);
+        $rank = $this->db->get_user_rank($user->balance);
+        $amount = number_format($user->balance, 2);
+        $message = array(
+            "channel"=>$this->message->channel,
+            "text"=>"You are my #$rank customer with \$$amount"
+        );
+        $this->slack->chat_postMessage($message);
+    }
+}
+
+$command_responses = array('ScoreboardResponse', 'FlexResponse', 'TransferResponse', 'TimePromptResponse');
+$conversation_responses = array('AwardTimebucksResponse', 'AyyyResponse');
 
 ?>
