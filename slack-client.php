@@ -20,6 +20,10 @@ class SlackClient {
         $this->signing_secret = $signing_secret;
     }
 
+    static function format_date_string($timestamp) {
+        return "<!date^".$timestamp."^{time}|".date('g:i A', $timestamp).">";
+    }
+
     private function get_query(string $url, array $data) {
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url.'?'.http_build_query($data));
@@ -125,6 +129,23 @@ class SlackClient {
 
         $member = $response["user"];
         return new SlackUser($member["id"], $member["tz_offset"], $member["is_bot"]);
+    }
+
+    function use_response_url(string $response_url, string $message, $replace_original) {
+        $data = array(
+            "text"=>$message,
+            "replace_original"=>$replace_original
+        );
+        $response = $this->post_query_json($response_url, $data);
+        $response = json_decode($response, true);
+
+        if(!isset($response["ok"]) || !$response["ok"]) {
+            $message = "[BLANK]";
+            if(isset($response["error"])) {
+                $message = $response["error"];
+            }
+            $this->error("response_url", $message);
+        }
     }
 
 }

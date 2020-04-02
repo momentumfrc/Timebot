@@ -8,7 +8,7 @@
     },
     {
         "name":"ayyy",
-        "cost": 5,
+        "cost": 2,
         "time":"4:20pm",
         "display":"Ayyy",
         "value":"It's %timestring%\nayyy"
