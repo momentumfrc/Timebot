@@ -1,6 +1,16 @@
 <?php
 require 'logger.php';
 
+class SlackUser {
+    public $id;
+    public $tz_offset;
+
+    function __construct(string $id, int $tz_offset) {
+        $this->id = $id;
+        $this->tz_offset = $tz_offset;
+    }
+}
+
 class SlackClient {
     private $token;
 
@@ -94,5 +104,27 @@ class SlackClient {
 
         return true;
     }
+
+    function user_info(string $id) {
+        $data = array(
+            "token" => $this->token,
+            "user" => $id
+        );
+        $response = $this->get_query("https://slack.com/api/users.info", $data);
+        $response = json_decode($response, true);
+
+        if(!isset($response["ok"]) || !$response["ok"]) {
+            $message = "[BLANK]";
+            if(isset($response["error"])) {
+                $message = $response["error"];
+            }
+            $this->error("user_info", $message);
+            return null;
+        }
+
+        $member = $response["user"];
+        return new SlackUser($member["id"], $member["tz_offset"]);
+    }
+
 }
 ?>

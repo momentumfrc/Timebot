@@ -2,7 +2,7 @@
 
 class Timebot {
 
-    function __construct(object $slack_client) {
+    function __construct(SlackClient $slack_client) {
         $this->slack = $slack_client;
     }
 

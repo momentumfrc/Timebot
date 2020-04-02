@@ -66,7 +66,7 @@ class Database {
         $stmt->close();
     }
 
-    function save_user(object $user) {
+    function save_user(User $user) {
         $this->save_users(array($user));
     }
 
