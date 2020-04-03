@@ -182,7 +182,7 @@ class TransferResponse implements CommandResponse {
             return;
         }
         if($reciever_slack->is_bot) {
-            $this->post_plaintext("Bots have no use for Timebucks!");
+            $this->post_plaintext("Bots have no use for TimeBucks!");
             return;
         }
 
@@ -300,6 +300,36 @@ class TimePromptResponse implements CommandResponse {
         }
         error_log(json_encode($message));
         $this->slack->chat_postEphemeral($message);
+    }
+}
+
+class HelpResponse implements CommandResponse {
+    private $slack;
+    private $db;
+    private $message;
+
+    function __construct(SlackClient $slack, Database $database, ChannelMessage $message) {
+        $this->slack = $slack;
+        $this->db = $database;
+        $this->message = $message;
+    }
+
+    static function get_trigger_words() {
+        return array("help");
+    }
+
+    function respond() {
+        $auth = $this->slack->auth_test();
+        $message = array(
+            "channel"=>$this->message->channel,
+            "text"=>"*Usage*: `<@$auth->user_id> [subcommand] [args...]`\n\n"
+                    ."Subcommands:\n"
+                    ."`scoreboard`: show the scoreboard\n"
+                    ."`flex`: show your balance (or just dm <@$auth->user_id>)\n"
+                    ."`gift [@user] [amount]`: transfer balance\n"
+                    ."`(no arguments)`: show the current time"
+        );
+        $this->slack->chat_postMessage($message);
     }
 }
 
@@ -436,7 +466,7 @@ class DMResponse implements Response {
     }
 }
 
-$command_responses = array('ScoreboardResponse', 'FlexResponse', 'TransferResponse', 'TimePromptResponse');
+$command_responses = array('ScoreboardResponse', 'FlexResponse', 'TransferResponse', 'TimePromptResponse', 'HelpResponse');
 $conversation_responses = array('AwardTimebucksResponse', 'AyyyResponse');
 
 ?>
