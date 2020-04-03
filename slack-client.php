@@ -12,6 +12,24 @@ class SlackUser {
     }
 }
 
+class Auth {
+    public $url;
+    public $team;
+    public $user;
+    public $team_id;
+    public $user_id;
+    public $bot_id;
+
+    function __construct(string $url, string $team, string $user, string $team_id, string $user_id, string $bot_id) {
+        $this->url = $url;
+        $this->team = $team;
+        $this->user = $user;
+        $this->team_id = $team_id;
+        $this->user_id = $user_id;
+        $this->bot_id = $bot_id;
+    }
+}
+
 class SlackClient {
     private $token;
 
@@ -129,6 +147,21 @@ class SlackClient {
 
         $member = $response["user"];
         return new SlackUser($member["id"], $member["tz_offset"], $member["is_bot"]);
+    }
+
+    function auth_test() {
+        $response = $this->post_query_json("https://slack.com/api/auth.test", array());
+        $response = json_decode($response, true);
+
+        if(!isset($response["ok"]) || !$response["ok"]) {
+            $message = "[BLANK]";
+            if(isset($response["error"])) {
+                $message = $response["error"];
+            }
+            $this->error("auth_test", $message);
+            return null;
+        }
+        return new Auth($response["url"], $response["team"], $response["user"], $response["team_id"], $response["user_id"], $response["bot_id"]);
     }
 
     function use_response_url(string $response_url, string $message, $replace_original) {

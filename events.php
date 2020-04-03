@@ -62,13 +62,19 @@ switch($data["type"]) {
                 $matches = array();
                 if(preg_match("/^\S*\s?([[:alnum:]]*)/", $event->text, $matches)) {
                     $command = $matches[1];
+                    $response_sent = false;
                     foreach($command_responses as $response_name) {
                         $words = ($response_name.'::get_trigger_words')();
                         if(in_array($command, $words)) {
                             $response = new $response_name($slack, $db, $event);
                             $response->respond();
+                            $response_sent = true;
                             break;
                         }
+                    }
+                    if(!$response_sent) {
+                        $response = new HelpResponse($slack, $db, $event);
+                        $response->respond();
                     }
                 }
             break;
