@@ -1,5 +1,20 @@
 <?php
 
+function format_amount($amount) {
+    $response = "";
+    $amount = number_format($amount, 2);
+    $response .= "$".$amount;
+    switch($amount) {
+        case "49.99":
+            $response .=" :hyperlogo:";
+        break;
+        case "4.20":
+            $response .= " _ayyy_";
+        break;
+    }
+    return $response;
+}
+
 class ChannelMessage {
     public $type;
     public $channel;
@@ -67,11 +82,7 @@ class ScoreboardResponse implements CommandResponse {
                 if($current_level === 2) { $message_text .= "\n:third_place_medal: "; }
                 if($current_level >= 3) { break; }
 
-                $amount = number_format($user->balance, 2);
-                $message_text .= "<@".$user->id."> with $".$amount;
-                if($amount === "49.99") {
-                    $message_text .= " :hyperlogo:";
-                }
+                $message_text .= "<@".$user->id."> with " . format_amount($user->balance);
             }
             $message = array(
                 "channel"=>$this->message->channel,
@@ -94,7 +105,7 @@ class FlexResponse implements CommandResponse {
     }
 
     static function get_trigger_words() {
-        return array("flex", "rank");
+        return array("flex", "rank", "balance");
     }
 
     function respond() {
@@ -105,8 +116,7 @@ class FlexResponse implements CommandResponse {
             $message_text = "You, <@".$this->message->user.">, aren't one of my customers";
         } else {
             $rank = $this->db->get_user_rank($user->balance);
-            $amount = number_format($user->balance, 2);
-            $message_text = "You, <@".$this->message->user.">, are my #$rank customer with \$$amount";
+            $message_text = "You, <@".$this->message->user.">, are my #$rank customer with " . format_amount($user->balance);
         }
 
         $message = array(
@@ -391,7 +401,7 @@ class AwardTimebucksResponse implements ConversationResponse {
                 $new_balance = $user->balance + self::TIMEBUCKS_INCREMENT;
                 Logger::log_balance("Increment: id=$user->id old_balance:$user->balance new_balance:$new_balance");
                 $user->balance = $new_balance;
-                $message_text = "Your TimeBucks balance is now $".number_format($new_balance, 2);
+                $message_text = "Your TimeBucks balance is now $".format_amount($new_balance);
             }
 
             $new_cooldown = floor($this->message->ts);
@@ -457,10 +467,9 @@ class DMResponse implements Response {
         $this->db->add_user_if_not_exists($this->message->user);
         $user = $this->db->get_user($this->message->user);
         $rank = $this->db->get_user_rank($user->balance);
-        $amount = number_format($user->balance, 2);
         $message = array(
             "channel"=>$this->message->channel,
-            "text"=>"You are my #$rank customer with \$$amount"
+            "text"=>"You are my #$rank customer with " . format_amount($user->balance)
         );
         $this->slack->chat_postMessage($message);
     }
